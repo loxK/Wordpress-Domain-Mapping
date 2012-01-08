@@ -349,7 +349,7 @@ function dm_handle_actions() {
 	global $wpdb, $parent_file;
 	$url = add_query_arg( array( 'page' => 'domainmapping' ), admin_url( $parent_file ) );
 	if ( !empty( $_POST[ 'action' ] ) ) {
-		$domain = $wpdb->escape( $_POST[ 'domain' ] );
+		$domain = $wpdb->escape( strtolower( $_POST[ 'domain' ] ) );
 		if ( $domain == '' ) {
 			wp_die( "You must enter a domain" );
 		}
