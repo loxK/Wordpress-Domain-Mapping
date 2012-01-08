@@ -672,6 +672,7 @@ if ( defined( 'DOMAIN_MAPPING' ) ) {
 	add_action( 'wp_head', 'remote_login_js_loader' );
 	add_action( 'login_head', 'redirect_login_to_orig' );
 	add_action( 'wp_logout', 'remote_logout_loader', 9999 );
+	add_action( 'set_current_user', 'dm_remote_logout', -10);
 
 	add_filter( 'stylesheet_uri', 'domain_mapping_post_content' );
 	add_filter( 'stylesheet_directory', 'domain_mapping_post_content' );
@@ -685,12 +686,28 @@ if ( defined( 'DOMAIN_MAPPING' ) ) {
 	} else {
 		add_filter( 'admin_url', 'domain_mapping_adminurl', 10, 3 );
 	}
+	
+	/**
+	 * Will insert mysql records in order to logout from other blogs
+	 */
+	add_action( 'wp_logout', 'dm_remote_logout_init', 9999 );
+	
+	/**
+	 * Will clear logout expired records
+	 */
+	add_action( 'wp_login', 'dm_clean_logout', 9999, 2 );
+	
 }	
 add_action( 'admin_init', 'dm_redirect_admin' );
 if ( isset( $_GET[ 'dm' ] ) )
 	add_action( 'template_redirect', 'remote_login_js' );
 
+/**
+ * After logging out a blog, we add mysql record and redirect to the main blog to
+ * logout from it.
+ */
 function remote_logout_loader() {
+	
 	global $current_site, $current_blog, $wpdb;
 	$wpdb->dmtablelogins = $wpdb->base_prefix . 'domain_mapping_logins';
 	if ( false == isset( $_SERVER[ 'HTTPS' ] ) )
@@ -703,6 +720,70 @@ function remote_logout_loader() {
 		wp_redirect( $protocol . $current_site->domain . $current_site->path . "?dm={$hash}&action=logout&blogid={$current_blog->blog_id}&k={$key}&t=" . mt_rand() );
 		exit;
 	} 
+}
+
+function dm_remote_logout_init ($blog_id = null) {
+	
+	global $current_blog, $wpdb, $current_user, $current_site;
+	
+	if ( ! get_site_option( 'dm_remote_login' ) )
+		return;
+	
+	// remote logout can only work if user was really connected
+	if( is_user_logged_in() ) {
+
+		$wpdb->dmtablelogins = $wpdb->base_prefix . 'domain_mapping_logins';
+		
+		$blogs = get_blogs_of_user( wp_get_current_user());
+		
+		foreach ($blogs as $blog) {
+
+			if( $blog->userblog_id == $current_site->id || $blog->userblog_id == $blog_id ) continue;
+			
+			$key = md5( time() . mt_rand() );
+			$wpdb->query( $wpdb->prepare( "INSERT INTO {$wpdb->dmtablelogins} ( `id`, `user_id`, `blog_id`, `t`, `logout` ) VALUES( %s, %d, %d, NOW(), 1 )", $key, $current_user->ID, $blog->userblog_id ));	
+		
+		}
+	}
+}
+
+/**
+ * Logout user from blog if needed
+ */
+function dm_remote_logout () {
+	
+	global $current_blog, $current_site, $wpdb, $current_user;
+	
+	if( ! get_site_option( 'dm_remote_login' ) || ! is_user_logged_in() ) 
+		return;
+	
+	$wpdb->dmtablelogins = $wpdb->base_prefix . 'domain_mapping_logins';
+	
+	$details = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->dmtablelogins} WHERE blog_id = %d AND user_id = %d AND t > (NOW()-%d) AND logout = 1", $current_blog->blog_id, $current_user->ID, apply_filters('auth_cookie_expiration', 172800, $user ? $user->ID : 0, true) ) );
+	
+	if( ! $details ) return;
+	
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE id = %s AND user_id = %d AND logout = 1", $details->id, $current_user->ID ) );
+	
+	wp_clear_auth_cookie();
+	wp_set_current_user(0);
+	
+}
+
+function dm_clean_logout ($user_login = '', $user = null) {
+	
+	global $wpdb;
+	
+	$wpdb->dmtablelogins = $wpdb->base_prefix . 'domain_mapping_logins';
+	
+	// a user is set, so that function was called from wp_login hook, we delete all records of that user
+	if( $user ) {
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE user_id = %d AND logout = 1", $user->ID ) );
+	}
+	
+	// we delete old, not used logout records (the maximum possible being the cookie expiration date when a user asks to remember him)
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE logout = 1 AND t < (NOW()-%d)", $user->ID, apply_filters('auth_cookie_expiration', 172800, $user ? $user->ID : 0, true) ) );
+	
 }
 
 function redirect_to_mapped_domain() {
@@ -780,11 +861,14 @@ function remote_login_js() {
 			}
 		} elseif ( $_GET[ 'action' ] == 'logout' ) {
 			
-			
 			if ( $details = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->dmtablelogins} WHERE id = %s AND blog_id = %d", $_GET[ 'k' ], $_GET[ 'blogid' ] ) ) ) {
 				$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE id = %s", $_GET[ 'k' ] ) );
 				$blog = get_blog_details( $_GET[ 'blogid' ] );
 				wp_clear_auth_cookie();
+				
+				// init other blogs logout
+				dm_remote_logout_init ($_GET[ 'blogid' ]);
+				
 				wp_redirect( trailingslashit( $blog->siteurl ) . "wp-login.php?loggedout=true" );
 				exit;
 			} else {
