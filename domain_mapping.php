@@ -725,7 +725,9 @@ function remote_logout_loader() {
 	$key = md5( time() );
 	$wpdb->query( $wpdb->prepare( "INSERT INTO {$wpdb->dmtablelogins} ( `id`, `user_id`, `blog_id`, `t` ) VALUES( %s, 0, %d, NOW() )", $key, $current_blog->blog_id ) );
 	if ( get_site_option( 'dm_redirect_admin' ) ) {
-		wp_redirect( $protocol . $current_site->domain . $current_site->path . "?dm={$hash}&action=logout&blogid={$current_blog->blog_id}&k={$key}&t=" . mt_rand() );
+		$redirect =  $protocol . $current_site->domain . $current_site->path . "?dm={$hash}&action=logout&blogid={$current_blog->blog_id}&k={$key}&t=" . mt_rand();
+		if( isset($_REQUEST['redirect_to']) ) $redirect =  add_query_arg('redirect_to', $_REQUEST['redirect_to'], $redirect);
+		wp_redirect($redirect);
 		exit;
 	} 
 }
@@ -877,7 +879,7 @@ function remote_login_js() {
 				// init other blogs logout
 				dm_remote_logout_init ($_GET[ 'blogid' ]);
 				
-				wp_redirect( trailingslashit( $blog->siteurl ) . "wp-login.php?loggedout=true" );
+				wp_redirect( $_REQUEST['redirect_to'] ? $_REQUEST['redirect_to'] : site_url("wp-login.php?loggedout=true") );
 				exit;
 			} else {
 				wp_die( __( "Unknown logout key", 'wordpress-mu-domain-mapping' ) );
