@@ -779,7 +779,9 @@ function remote_login_js() {
 				wp_die( __( "Unknown login key", 'wordpress-mu-domain-mapping' ) );
 			}
 		} elseif ( $_GET[ 'action' ] == 'logout' ) {
-			if ( $details = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->dmtablelogins} WHERE id = %d AND blog_id = %d", $_GET[ 'k' ], $_GET[ 'blogid' ] ) ) ) {
+			
+			
+			if ( $details = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->dmtablelogins} WHERE id = %s AND blog_id = %d", $_GET[ 'k' ], $_GET[ 'blogid' ] ) ) ) {
 				$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE id = %s", $_GET[ 'k' ] ) );
 				$blog = get_blog_details( $_GET[ 'blogid' ] );
 				wp_clear_auth_cookie();
