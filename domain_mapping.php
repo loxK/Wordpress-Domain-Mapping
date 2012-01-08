@@ -716,7 +716,11 @@ function redirect_to_mapped_domain() {
 		$_SERVER[ 'HTTPS' ] = 'off';
 	$protocol = ( 'on' == strtolower( $_SERVER['HTTPS'] ) ) ? 'https://' : 'http://';
 	$url = domain_mapping_siteurl( false );
-	if ( $url && $url != untrailingslashit( $protocol . $current_blog->domain . $current_blog->path ) ) {
+	
+	if ( $url && $url != untrailingslashit( $protocol . $current_blog->domain . $current_blog->path ) 
+	     && apply_filters('domain_mapping_do_redirect', true, $url, $protocol, $current_blog)
+	   ) {
+		
 		$redirect = get_site_option( 'dm_301_redirect' ) ? '301' : '302';
 		if ( ( defined( 'VHOST' ) && constant( "VHOST" ) != 'yes' ) || ( defined( 'SUBDOMAIN_INSTALL' ) && constant( 'SUBDOMAIN_INSTALL' ) == false ) ) {
 			$_SERVER[ 'REQUEST_URI' ] = str_replace( $current_blog->path, '/', $_SERVER[ 'REQUEST_URI' ] );
