@@ -753,7 +753,7 @@ function remote_login_js() {
 	$protocol = ( 'on' == strtolower( $_SERVER[ 'HTTPS' ] ) ) ? 'https://' : 'http://';
 	if ( $_GET[ 'dm' ] == $hash ) {
 		if ( $_GET[ 'action' ] == 'load' ) {
-			if ( !is_user_logged_in() )
+			if ( !is_user_logged_in() || ! is_user_member_of_blog(wp_get_current_user()->ID, $_GET[ 'blogid' ]) )
 				exit;
 			$key = md5( time() . mt_rand() );
 			$wpdb->query( $wpdb->prepare( "INSERT INTO {$wpdb->dmtablelogins} ( `id`, `user_id`, `blog_id`, `t` ) VALUES( %s, %d, %d, NOW() )", $key, $current_user->ID, $_GET[ 'blogid' ] ) );
@@ -765,8 +765,12 @@ function remote_login_js() {
 				if ( $details->blog_id == $wpdb->blogid ) {
 					$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE id = %s", $_GET[ 'k' ] ) );
 					$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE t < %d", ( time() - 120 ) ) ); // remote logins survive for only 2 minutes if not used.
-					wp_set_auth_cookie( $details->user_id );
-					wp_redirect( remove_query_arg( array( 'dm', 'action', 'k', 't', $protocol . $current_blog->domain . $_SERVER[ 'REQUEST_URI' ] ) ) );
+					
+					if(is_user_member_of_blog($details->user_id) && apply_filters('domain_mapping_sign_user', true, $details->user_id) ) {
+						wp_set_auth_cookie( $details->user_id );
+						wp_redirect( remove_query_arg( array( 'dm', 'action', 'k', 't', $protocol . $current_blog->domain . $_SERVER[ 'REQUEST_URI' ] ) ) );
+					}
+					
 					exit;
 				} else {
 					wp_die( __( "Incorrect or out of date login key", 'wordpress-mu-domain-mapping' ) );
