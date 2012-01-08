@@ -98,7 +98,7 @@ function maybe_create_db() {
 	$wpdb->dmtable = $wpdb->base_prefix . 'domain_mapping';
 	$wpdb->dmtablelogins = $wpdb->base_prefix . 'domain_mapping_logins';
 	if ( dm_site_admin() ) {
-		$created = 0;
+		$created = 0; $updated = false;
 		if ( $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->dmtable}'") != $wpdb->dmtable ) {
 			$wpdb->query( "CREATE TABLE IF NOT EXISTS `{$wpdb->dmtable}` (
 				`id` bigint(20) NOT NULL auto_increment,
@@ -120,9 +120,17 @@ function maybe_create_db() {
 			);" );
 			$created = 1;
 		}
-		if ( $created ) {
-			?> <div id="message" class="updated fade"><p><strong><?php _e( 'Domain mapping database table created.', 'wordpress-mu-domain-mapping' ) ?></strong></p></div> <?php
+		if( ! $wpdb->get_var("SHOW COLUMNS FROM wp_domain_mapping_logins LIKE 'logout'") ){
+			$wpdb->query( "ALTER TABLE `{$wpdb->dmtablelogins}` ADD `logout` TINYINT( 1 ) NOT NULL" );
+			$updated = true;
 		}
+		if ( $created ) {
+			?> <div id="message" class="updated fade"><p><strong><?php _e( 'Domain mapping database tables created.', 'wordpress-mu-domain-mapping' ) ?></strong></p></div> <?php
+		}
+		if ( $updated ) {
+			?> <div id="message" class="updated fade"><p><strong><?php _e( 'Domain mapping database tables updated.', 'wordpress-mu-domain-mapping' ) ?></strong></p></div> <?php
+		}
+		
 	}
 
 }
