@@ -879,7 +879,7 @@ function remote_login_js() {
 				// init other blogs logout
 				dm_remote_logout_init ($_GET[ 'blogid' ]);
 				
-				wp_redirect( $_REQUEST['redirect_to'] ? $_REQUEST['redirect_to'] : site_url("wp-login.php?loggedout=true") );
+				wp_redirect( $_REQUEST['redirect_to'] ? $_REQUEST['redirect_to'] : get_site_url( $_GET[ 'blogid' ], "wp-login.php?loggedout=true", 'login') );
 				exit;
 			} else {
 				wp_die( __( "Unknown logout key", 'wordpress-mu-domain-mapping' ) );
