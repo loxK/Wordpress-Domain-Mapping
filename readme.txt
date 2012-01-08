@@ -1,5 +1,5 @@
 === WordPress MU Domain Mapping ===
-Contributors: donncha, wpmuguru, automattic
+Contributors: donncha, wpmuguru, automattic, Laurent Dinclaux
 Tags: wordpressmu, domain-mapping, multisite
 Tested up to: 3.2
 Stable tag: 0.5.4.1
@@ -35,6 +35,9 @@ Things to remember:
 * For localization: place translation files (ie. wordpress-mu-domain-mapping-xx_XX.mo) in the directory wp-content/plugins/wordpress-mu-domain-mapping/languages. You will probably have to create that directory yourself.
 
 == Upgrade Notice ==
+
+= 0.5.4.2 =
+* WordPress 3.3 compatibility, bugfixes
 
 = 0.5.4.1 =
 WordPress 3.2 compatibility, bugfixes
