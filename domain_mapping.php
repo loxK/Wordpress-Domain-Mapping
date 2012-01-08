@@ -853,7 +853,7 @@ function remote_login_js() {
 			if ( $details = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->dmtablelogins} WHERE id = %s AND blog_id = %d", $_GET[ 'k' ], $wpdb->blogid ) ) ) {
 				if ( $details->blog_id == $wpdb->blogid ) {
 					$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE id = %s", $_GET[ 'k' ] ) );
-					$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE t < %d", ( time() - 120 ) ) ); // remote logins survive for only 2 minutes if not used.
+					$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtablelogins} WHERE t < %d", ( time() - apply_filters('dm_remote_login_delay', 120 ) ) ) ); // remote logins survive for only 2 minutes if not used.
 					
 					if(is_user_member_of_blog($details->user_id) && apply_filters('domain_mapping_sign_user', true, $details->user_id) ) {
 						wp_set_auth_cookie( $details->user_id );
