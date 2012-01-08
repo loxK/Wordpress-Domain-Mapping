@@ -3,7 +3,7 @@
 Plugin Name: WordPress MU Domain Mapping
 Plugin URI: http://ocaoimh.ie/wordpress-mu-domain-mapping/
 Description: Map any blog on a WordPress website to another domain.
-Version: 0.5.4.1
+Version: 0.5.4.2
 Author: Donncha O Caoimh
 Author URI: http://ocaoimh.ie/
 */
@@ -145,9 +145,10 @@ function dm_domains_admin() {
 	echo '<h2>' . __( 'Domain Mapping: Domains', 'wordpress-mu-domain-mapping' ) . '</h2>';
 	if ( !empty( $_POST[ 'action' ] ) ) {
 		check_admin_referer( 'domain_mapping' );
+		$domain = strtolower( $_POST[ 'domain' ] );
 		switch( $_POST[ 'action' ] ) {
 			case "edit":
-				$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->dmtable} WHERE domain = %s", $_POST[ 'domain' ] ) );
+				$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->dmtable} WHERE domain = %s", $domain ) );
 				if ( $row ) {
 					dm_edit_domain( $row );
 				} else {
@@ -157,34 +158,36 @@ function dm_domains_admin() {
 			case "save":
 				if ( $_POST[ 'blog_id' ] != 0 AND 
 					$_POST[ 'blog_id' ] != 1 AND 
-					null == $wpdb->get_var( $wpdb->prepare( "SELECT domain FROM {$wpdb->dmtable} WHERE blog_id != %d AND domain = %s", $_POST[ 'blog_id' ], $_POST[ 'domain' ] ) ) 
+					null == $wpdb->get_var( $wpdb->prepare( "SELECT domain FROM {$wpdb->dmtable} WHERE blog_id != %d AND domain = %s", $_POST[ 'blog_id' ], $domain ) ) 
 				) {
 					if ( $_POST[ 'orig_domain' ] == '' ) {
-						$wpdb->query( $wpdb->prepare( "INSERT INTO {$wpdb->dmtable} ( `blog_id`, `domain`, `active` ) VALUES ( %d, %s, %d )", $_POST[ 'blog_id' ], $_POST[ 'domain' ], $_POST[ 'active' ] ) );
+						$wpdb->query( $wpdb->prepare( "INSERT INTO {$wpdb->dmtable} ( `blog_id`, `domain`, `active` ) VALUES ( %d, %s, %d )", $_POST[ 'blog_id' ], $domain, $_POST[ 'active' ] ) );
 						echo "<p><strong>" . __( 'Domain Add', 'wordpress-mu-domain-mapping' ) . "</strong></p>";
 					} else {
-						$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->dmtable} SET blog_id = %d, domain = %s, active = %d WHERE domain = %s", $_POST[ 'blog_id' ], $_POST[ 'domain' ], $_POST[ 'active' ], $_POST[ 'orig_domain' ] ) );
+						$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->dmtable} SET blog_id = %d, domain = %s, active = %d WHERE domain = %s", $_POST[ 'blog_id' ], $domain, $_POST[ 'active' ], $_POST[ 'orig_domain' ] ) );
 						echo "<p><strong>" . __( 'Domain Updated', 'wordpress-mu-domain-mapping' ) . "</strong></p>";
 					}
 				}
 			break;
 			case "del":
-				$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtable} WHERE domain = %s", $_POST[ 'domain' ] ) );
+				$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtable} WHERE domain = %s", $domain ) );
 				echo "<p><strong>" . __( 'Domain Deleted', 'wordpress-mu-domain-mapping' ) . "</strong></p>";
 			break;
 			case "search":
-				$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->dmtable} WHERE domain LIKE %s", $_POST[ 'domain' ] ) );
-				dm_domain_listing( $rows, sprintf( __( "Searching for %s", 'wordpress-mu-domain-mapping' ), esc_html( $_POST[ 'domain' ] ) ) );
+				$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->dmtable} WHERE domain LIKE %s", $domain ) );
+				dm_domain_listing( $rows, sprintf( __( "Searching for %s", 'wordpress-mu-domain-mapping' ), esc_html( $domain ) ) );
 			break;
 		}
 		if ( $_POST[ 'action' ] == 'update' ) {
 			if ( preg_match( '|^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$|', $_POST[ 'ipaddress' ] ) )
-				add_site_option( 'dm_ipaddress', $_POST[ 'ipaddress' ] );
+				update_site_option( 'dm_ipaddress', $_POST[ 'ipaddress' ] );
+
 			if ( ! preg_match( '/(--|\.\.)/', $_POST[ 'cname' ] ) && preg_match( '|^([a-zA-Z0-9-\.])+$|', $_POST[ 'cname' ] ) )
-				add_site_option( 'dm_cname', stripslashes( $_POST[ 'cname' ] ) );
+				update_site_option( 'dm_cname', stripslashes( $_POST[ 'cname' ] ) );
 			else
-				add_site_option( 'dm_cname', '' );
-			add_site_option( 'dm_301_redirect', intval( $_POST[ 'permanent_redirect' ] ) );
+				update_site_option( 'dm_cname', '' );
+
+			update_site_option( 'dm_301_redirect', intval( $_POST[ 'permanent_redirect' ] ) );
 		}
 	}
 
@@ -291,18 +294,18 @@ function dm_admin_page() {
 				}
 			}
 			if( $ipok )
-				add_site_option( 'dm_ipaddress', $_POST[ 'ipaddress' ] );
+				update_site_option( 'dm_ipaddress', $_POST[ 'ipaddress' ] );
 			if ( intval( $_POST[ 'always_redirect_admin' ] ) == 0 )
 				$_POST[ 'dm_remote_login' ] = 0; // disable remote login if redirecting to mapped domain
-			add_site_option( 'dm_remote_login', intval( $_POST[ 'dm_remote_login' ] ) );
+			update_site_option( 'dm_remote_login', intval( $_POST[ 'dm_remote_login' ] ) );
 			if ( ! preg_match( '/(--|\.\.)/', $_POST[ 'cname' ] ) && preg_match( '|^([a-zA-Z0-9-\.])+$|', $_POST[ 'cname' ] ) )
-				add_site_option( 'dm_cname', stripslashes( $_POST[ 'cname' ] ) );
+				update_site_option( 'dm_cname', stripslashes( $_POST[ 'cname' ] ) );
 			else
-				add_site_option( 'dm_cname', '' );
-			add_site_option( 'dm_301_redirect', intval( $_POST[ 'permanent_redirect' ] ) );
-			add_site_option( 'dm_redirect_admin', intval( $_POST[ 'always_redirect_admin' ] ) );
-			add_site_option( 'dm_user_settings', intval( $_POST[ 'dm_user_settings' ] ) );
-			add_site_option( 'dm_no_primary_domain', intval( $_POST[ 'dm_no_primary_domain' ] ) );
+				update_site_option( 'dm_cname', '' );
+			update_site_option( 'dm_301_redirect', intval( $_POST[ 'permanent_redirect' ] ) );
+			update_site_option( 'dm_redirect_admin', intval( $_POST[ 'always_redirect_admin' ] ) );
+			update_site_option( 'dm_user_settings', intval( $_POST[ 'dm_user_settings' ] ) );
+			update_site_option( 'dm_no_primary_domain', intval( $_POST[ 'dm_no_primary_domain' ] ) );
 		}
 	}
 
@@ -542,7 +545,7 @@ function domain_mapping_siteurl( $setting ) {
 
 		$wpdb->suppress_errors( $s );
 		if ( false == isset( $_SERVER[ 'HTTPS' ] ) )
-			$_SERVER[ 'HTTPS' ] == 'Off';
+			$_SERVER[ 'HTTPS' ] = 'Off';
 		$protocol = ( 'on' == strtolower( $_SERVER[ 'HTTPS' ] ) ) ? 'https://' : 'http://';
 		if ( $domain ) {
 			$return_url[ $wpdb->blogid ] = untrailingslashit( $protocol . $domain  );
@@ -617,6 +620,10 @@ function domain_mapping_post_content( $post_content ) {
 }
 
 function dm_redirect_admin() {
+	// don't redirect admin ajax calls
+	if ( strpos( $_SERVER['REQUEST_URI'], 'wp-admin/admin-ajax.php' ) !== false )
+		return;
+
 	if ( get_site_option( 'dm_redirect_admin' ) ) {
 		// redirect mapped domain admin page to original url
 		$url = get_original_url( 'siteurl' );
@@ -687,7 +694,7 @@ function remote_logout_loader() {
 	global $current_site, $current_blog, $wpdb;
 	$wpdb->dmtablelogins = $wpdb->base_prefix . 'domain_mapping_logins';
 	if ( false == isset( $_SERVER[ 'HTTPS' ] ) )
-		$_SERVER[ 'HTTPS' ] == 'Off';
+		$_SERVER[ 'HTTPS' ] = 'Off';
 	$protocol = ( 'on' == strtolower( $_SERVER[ 'HTTPS' ] ) ) ? 'https://' : 'http://';
 	$hash = get_dm_hash();
 	$key = md5( time() );
@@ -700,9 +707,14 @@ function remote_logout_loader() {
 
 function redirect_to_mapped_domain() {
 	global $current_blog, $wpdb;
+
+	// don't redirect post previews
+	if ( isset( $_GET['preview'] ) && $_GET['preview'] == 'true' )
+		return;
+
 	if ( !isset( $_SERVER[ 'HTTPS' ] ) )
-		$_SERVER[ 'HTTPS' ] = "off";
-	$protocol = ( 'on' == strtolower($_SERVER['HTTPS']) ) ? 'https://' : 'http://';
+		$_SERVER[ 'HTTPS' ] = 'off';
+	$protocol = ( 'on' == strtolower( $_SERVER['HTTPS'] ) ) ? 'https://' : 'http://';
 	$url = domain_mapping_siteurl( false );
 	if ( $url && $url != untrailingslashit( $protocol . $current_blog->domain . $current_blog->path ) ) {
 		$redirect = get_site_option( 'dm_301_redirect' ) ? '301' : '302';
@@ -733,7 +745,7 @@ function remote_login_js() {
 	$wpdb->dmtablelogins = $wpdb->base_prefix . 'domain_mapping_logins';
 	$hash = get_dm_hash();
 	if ( false == isset( $_SERVER[ 'HTTPS' ] ) )
-		$_SERVER[ 'HTTPS' ] == 'Off';
+		$_SERVER[ 'HTTPS' ] = 'Off';
 	$protocol = ( 'on' == strtolower( $_SERVER[ 'HTTPS' ] ) ) ? 'https://' : 'http://';
 	if ( $_GET[ 'dm' ] == $hash ) {
 		if ( $_GET[ 'action' ] == 'load' ) {
@@ -779,7 +791,7 @@ function remote_login_js_loader() {
 		return false;
 
 	if ( false == isset( $_SERVER[ 'HTTPS' ] ) )
-		$_SERVER[ 'HTTPS' ] == 'Off';
+		$_SERVER[ 'HTTPS' ] = 'Off';
 	$protocol = ( 'on' == strtolower( $_SERVER[ 'HTTPS' ] ) ) ? 'https://' : 'http://';
 	$hash = get_dm_hash();
 	echo "<script src='{$protocol}{$current_site->domain}{$current_site->path}?dm={$hash}&amp;action=load&amp;blogid={$current_blog->blog_id}&amp;siteid={$current_blog->site_id}&amp;t=" . mt_rand() . "&amp;back=" . urlencode( $protocol . $current_blog->domain . $_SERVER[ 'REQUEST_URI' ] ) . "' type='text/javascript'></script>";
